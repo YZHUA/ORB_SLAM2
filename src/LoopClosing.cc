@@ -103,6 +103,7 @@ bool LoopClosing::CheckNewKeyFrames()
 bool LoopClosing::DetectLoop()
 {
     {
+        //线程同步
         unique_lock<mutex> lock(mMutexLoopQueue);
         mpCurrentKF = mlpLoopKeyFrameQueue.front();
         mlpLoopKeyFrameQueue.pop_front();
@@ -113,6 +114,7 @@ bool LoopClosing::DetectLoop()
     //If the map contains less than 10 KF or less than 10 KF have passed from last loop detection
     if(mpCurrentKF->mnId<mLastLoopKFid+10)
     {
+        //里头少于10个关键帧的闭环不当作闭环处理
         mpKeyFrameDB->add(mpCurrentKF);
         mpCurrentKF->SetErase();
         return false;
@@ -131,15 +133,13 @@ bool LoopClosing::DetectLoop()
             continue;
         const DBoW2::BowVector &BowVec = pKF->mBowVec;
 
-        float score = mpORBVocabulary->score(CurrentBowVec, BowVec);
-
+        float score = mpORBVocabulary->score(CurrentBowVec, BowVec);//图像配准，返回图像的相似程度
         if(score<minScore)
-            minScore = score;
+            minScore = score;//从已有的图像中找到最相似的一副图像
     }
 
     // Query the database imposing the minimum score
-    vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);
-
+    vector<KeyFrame*> vpCandidateKFs = mpKeyFrameDB->DetectLoopCandidates(mpCurrentKF, minScore);//取出最相似的图片，可能会有多个
     // If there are no loop candidates, just add new keyframe and return false
     if(vpCandidateKFs.empty())
     {
